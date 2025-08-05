@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown File Stitcher</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom styles for drag-and-drop feedback and accessibility */
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .file-item {
+      cursor: grab;
+      transition: transform 0.2s ease-in-out;
+    }
+    .file-item.dragging {
+      opacity: 0.5;
+      border: 2px dashed #6366f1; /* Indigo border for dragging feedback */
+    }
+    .file-item.drag-over {
+      background-color: #e0e7ff; /* Light blue background when dragged over */
+    }
+    /* Custom focus styles for better accessibility */
+    button:focus-visible,
+    .file-item:focus-visible,
+    a.download-button:focus-visible,
+    #theme-toggle:focus-visible { /* Added focus for the theme toggle */
+      outline: 2px solid #3b82f6; /* Blue outline for focus */
+      outline-offset: 2px;
+    }
+    /* Style for disabled download link */
+    a.download-button.disabled {
+      pointer-events: none; /* Prevent clicks */
+      opacity: 0.5; /* Visual feedback for disabled */
+      cursor: not-allowed;
+    }
+
+    /* Base background and text colors for light mode */
+    html.light body {
+      background-color: #f3f4f6; /* Light gray background */
+      color: #1f2937; /* Dark gray text */
+    }
+    html.light main {
+      background-color: #ffffff; /* White card background */
+      color: #1f2937; /* Dark gray text */
+    }
+    html.light .file-item {
+      background-color: #ffffff;
+      border-color: #e5e7eb;
+      color: #374151;
+    }
+    html.light .file-item svg {
+      color: #9ca3af;
+    }
+    html.light .remove-file-button {
+      color: #ef4444;
+    }
+    html.light .remove-file-button:hover {
+      background-color: #fee2e2;
+    }
+    html.light .remove-file-button:focus-visible {
+      background-color: #fee2e2;
+      border-color: #ef4444;
+    }
+
+
+    /* Dark mode styles */
+    html.dark body {
+      background-color: #1f2937; /* Darker gray background */
+      color: #e5e7eb; /* Light gray text */
+    }
+    html.dark main {
+      background-color: #374151; /* Even darker gray card background */
+      color: #e5e7eb; /* Light gray text */
+    }
+    html.dark h1, html.dark h2 {
+      color: #a78bfa; /* Lighter indigo for headings in dark mode */
+    }
+    html.dark .file-item {
+      background-color: #4b5563; /* Darker file item background */
+      border-color: #6b7280;
+      color: #e5e7eb;
+    }
+    html.dark .file-item svg {
+      color: #d1d5db;
+    }
+    html.dark .remove-file-button {
+      color: #f87171;
+    }
+    html.dark .remove-file-button:hover {
+      background-color: #b91c1c;
+    }
+    html.dark .remove-file-button:focus-visible {
+      background-color: #b91c1c;
+      border-color: #f87171;
+    }
+    html.dark .border-gray-300 {
+        border-color: #4b5563; /* Adjust border color for dark mode upload area */
+    }
+    html.dark .bg-gray-50 {
+        background-color: #4b5563; /* Adjust background for dark mode upload area */
+    }
+    html.dark .hover\:bg-gray-100:hover {
+        background-color: #6b7280; /* Adjust hover for dark mode upload area */
+    }
+    html.dark .text-gray-600 {
+        color: #d1d5db; /* Adjust text color for dark mode upload area */
+    }
+    html.dark .text-gray-500 {
+        color: #9ca3af; /* Adjust italic text color for dark mode */
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 transition-colors duration-300 ease-in-out">
+  <main class="w-full max-w-3xl rounded-xl shadow-lg p-8 space-y-8 relative transition-colors duration-300 ease-in-out">
+    <!-- Theme Toggle Switch -->
+    <button id="theme-toggle" class="absolute top-4 right-4 p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-300 ease-in-out"
+            aria-label="Toggle light and dark theme">
+      <!-- Sun icon for light mode -->
+      <svg class="w-6 h-6 sun-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 00-.707-.707l-.707.707a1 1 0 00.707.707l.707-.707zM10 18a1 1 0 01-1 1v1a1 1 0 112 0v-1a1 1 0 01-1-1zM5.05 15.05a1 1 0 001.414 0l.707-.707a1 1 0 00-1.414-1.414l-.707.707a1 1 0 000 1.414zm-2.12-10.607a1 1 0 000 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 0z" />
+      </svg>
+      <!-- Moon icon for dark mode -->
+      <svg class="w-6 h-6 moon-icon hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+      </svg>
+    </button>
+
+    <h1 class="text-4xl font-extrabold text-center text-indigo-700 mb-6">
+      Markdown File Stitcher
+    </h1>
+
+    <!-- File Upload Section -->
+    <section class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50 hover:bg-gray-100 transition duration-200 ease-in-out"
+             aria-labelledby="upload-heading">
+      <h2 id="upload-heading" class="sr-only">Upload Markdown or Text Files</h2>
+      <p class="text-lg text-gray-600 mb-4">
+        Drag & drop your Markdown or text files here, or
+      </p>
+      <label for="file-input" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer transition duration-150 ease-in-out">
+        <svg class="-ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M.5 8A.5.5 0 011 7.5h18a.5.5 0 010 1H1A.5.5 0 01.5 8zM3 10a.5.5 0 01.5-.5h13a.5.5 0 010 1h-13A.5.5 0 013 10zM5 12a.5.5 0 01.5-.5h9a.5.5 0 010 1h-9A.5.5 0 015 12zM7 14a.5.5 0 01.5-.5h5a.5.5 0 010 1h-5A.5.5 0 017 14z" clip-rule="evenodd" />
+        </svg>
+        Select Files
+      </label>
+      <input type="file" id="file-input" multiple accept=".md,.txt" class="hidden" aria-describedby="file-input-description">
+      <p id="file-input-description" class="sr-only">
+        Choose multiple Markdown or plain text files to upload.
+      </p>
+    </section>
+
+    <!-- File List Section -->
+    <section class="rounded-lg p-6 shadow-md transition-colors duration-300 ease-in-out bg-white dark:bg-gray-700">
+      <h2 id="file-list-heading" class="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-4">
+        Uploaded Files (Drag to Reorder)
+      </h2>
+      <ul id="file-list" class="space-y-3" role="list" aria-live="polite">
+        <!-- File items will be dynamically added here -->
+        <li class="text-gray-500 italic" id="no-files-message">No files uploaded yet.</li>
+      </ul>
+    </section>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-col sm:flex-row justify-center gap-4">
+      <button id="stitch-button" class="px-8 py-4 bg-green-600 text-white font-bold rounded-full shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled aria-label="Stitch selected files into one output.">
+        Stitch Files
+      </button>
+      <!-- Changed from button to a tag for reliable download -->
+      <a id="download-button" class="download-button px-8 py-4 bg-blue-600 text-white font-bold rounded-full shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out transform hover:scale-105 hidden disabled"
+              href="#" role="button" aria-label="Download the stitched Markdown file.">
+        Download Output
+      </a>
+    </div>
+
+    <!-- Status Message Area -->
+    <div id="status-message" role="status" aria-live="assertive" class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400"></div>
+  </main>
+
+  <script>
+    // Global variables to store file data and DOM elements
+    let filesData = []; // Stores {name: string, content: string, id: string} for each file
+    let draggedItem = null; // Stores the currently dragged list item
+
+    // Get DOM elements
+    const htmlElement = document.documentElement;
+    const themeToggle = document.getElementById('theme-toggle');
+    const sunIcon = themeToggle.querySelector('.sun-icon');
+    const moonIcon = themeToggle.querySelector('.moon-icon');
+    const fileInput = document.getElementById('file-input');
+    const fileList = document.getElementById('file-list');
+    const stitchButton = document.getElementById('stitch-button');
+    const downloadButton = document.getElementById('download-button'); // Now an <a> tag
+    const noFilesMessage = document.getElementById('no-files-message');
+    const statusMessageDiv = document.getElementById('status-message');
+
+    /**
+     * Applies the specified theme ('light' or 'dark') to the HTML element
+     * and updates the theme toggle icon.
+     * @param {string} theme - 'light' or 'dark'.
+     */
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        htmlElement.classList.add('dark');
+        htmlElement.classList.remove('light');
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+      } else {
+        htmlElement.classList.remove('dark');
+        htmlElement.classList.add('light');
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+      }
+      localStorage.setItem('theme', theme); // Save preference
+    }
+
+    /**
+     * Toggles the theme between light and dark.
+     */
+    function toggleTheme() {
+      const currentTheme = htmlElement.classList.contains('dark') ? 'dark' : 'light';
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      applyTheme(newTheme);
+    }
+
+    // Initialize theme based on local storage or OS preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      applyTheme(savedTheme);
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      applyTheme('dark'); // OS prefers dark mode
+    } else {
+      applyTheme('light'); // Default to light mode
+    }
+
+    // Listen for OS theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      // Only auto-switch if no explicit preference is saved
+      if (!localStorage.getItem('theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+
+    // Event listener for manual theme toggle
+    themeToggle.addEventListener('click', toggleTheme);
+
+    /**
+     * Displays a status message to the user.
+     * @param {string} message - The message to display.
+     * @param {string} type - 'success', 'error', 'info'. Determines styling.
+     */
+    function showStatusMessage(message, type = 'info') {
+      statusMessageDiv.textContent = message;
+      statusMessageDiv.className = 'mt-4 text-center text-sm';
+      if (type === 'success') {
+        statusMessageDiv.classList.add('text-green-700', 'font-semibold');
+      } else if (type === 'error') {
+        statusMessageDiv.classList.add('text-red-700', 'font-semibold');
+      } else {
+        statusMessageDiv.classList.add('text-gray-600', 'dark:text-gray-400'); // Added dark mode support
+      }
+      // Announce message to screen readers
+      statusMessageDiv.setAttribute('aria-live', 'assertive');
+    }
+
+    /**
+     * Updates the state of the stitch and download buttons based on filesData.
+     */
+    function updateButtonStates() {
+      const hasFiles = filesData.length > 0;
+      stitchButton.disabled = !hasFiles;
+
+      // Manage the "disabled" state for the <a> tag
+      downloadButton.classList.add('hidden'); // Always hide until stitched
+      downloadButton.classList.add('disabled'); // Add disabled class
+      downloadButton.removeAttribute('download'); // Remove download attribute
+      downloadButton.href = '#'; // Reset href
+      downloadButton.setAttribute('tabindex', '-1'); // Make it not focusable
+    }
+
+    /**
+     * Handles file selection from the input.
+     * @param {Event} event - The change event from the file input.
+     */
+    fileInput.addEventListener('change', (event) => {
+      const files = event.target.files;
+      if (files.length === 0) {
+        showStatusMessage('No files selected.', 'info');
+        return;
+      }
+
+      // Hide the "No files uploaded yet." message
+      if (noFilesMessage) {
+        noFilesMessage.classList.add('hidden');
+      }
+
+      showStatusMessage(`Reading ${files.length} file(s)...`, 'info');
+      let filesProcessed = 0;
+      let filesFailed = 0;
+
+      for (const file of files) {
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+          const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          filesData.push({
+            name: file.name,
+            content: e.target.result,
+            id: fileId
+          });
+          renderFileList();
+          filesProcessed++;
+          if (filesProcessed + filesFailed === files.length) {
+            if (filesFailed === 0) {
+              showStatusMessage(`${files.length} file(s) loaded successfully.`, 'success');
+            } else {
+              showStatusMessage(`${filesProcessed} file(s) loaded, ${filesFailed} failed.`, 'error');
+            }
+            updateButtonStates();
+          }
+        };
+
+        reader.onerror = () => {
+          console.error(`Error reading file: ${file.name}`, reader.error);
+          showStatusMessage(`Error reading file: ${file.name}. Please try again.`, 'error');
+          filesFailed++;
+          filesProcessed++; // Still count as processed to complete the loop
+          if (filesProcessed + filesFailed === files.length) {
+            showStatusMessage(`${filesProcessed} file(s) loaded, ${filesFailed} failed.`, 'error');
+            updateButtonStates();
+          }
+        };
+
+        reader.readAsText(file);
+      }
+      // Clear the input value so the same file can be selected again if needed
+      fileInput.value = '';
+    });
+
+    /**
+     * Renders the list of uploaded files in the UI.
+     * Clears existing list and re-renders based on the current filesData order.
+     */
+    function renderFileList() {
+      fileList.innerHTML = ''; // Clear current list
+
+      if (filesData.length === 0) {
+        noFilesMessage.classList.remove('hidden');
+        fileList.appendChild(noFilesMessage);
+        updateButtonStates();
+        return;
+      } else {
+        if (noFilesMessage) {
+          noFilesMessage.classList.add('hidden');
+        }
+      }
+
+      filesData.forEach((file, index) => {
+        const listItem = document.createElement('li');
+        listItem.id = file.id;
+        listItem.className = 'file-item flex items-center justify-between p-3 rounded-lg shadow-sm text-lg font-medium bg-white border border-gray-200 text-gray-700 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100';
+        listItem.setAttribute('draggable', 'true');
+        listItem.setAttribute('role', 'listitem');
+        listItem.setAttribute('aria-label', `File ${file.name}, currently at position ${index + 1}`);
+        listItem.setAttribute('tabindex', '0'); // Make draggable items focusable
+
+        // Add drag icon (optional, but good for visual cue)
+        listItem.innerHTML = `
+          <span class="flex items-center">
+            <svg class="w-5 h-5 mr-3 text-gray-400 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            ${file.name}
+          </span>
+          <button class="remove-file-button p-1 rounded-full text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:text-red-400 dark:hover:bg-red-900 dark:focus:ring-red-400"
+                  aria-label="Remove file ${file.name}">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+            </svg>
+          </button>
+        `;
+        fileList.appendChild(listItem);
+      });
+      addDragListeners();
+      addRemoveListeners();
+      updateButtonStates();
+    }
+
+    /**
+     * Adds drag-and-drop event listeners to all file items.
+     */
+    function addDragListeners() {
+      const items = fileList.querySelectorAll('.file-item');
+      items.forEach(item => {
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragover', handleDragOver);
+        item.addEventListener('dragleave', handleDragLeave);
+        item.addEventListener('drop', handleDrop);
+        item.addEventListener('dragend', handleDragEnd);
+
+        // Keyboard reordering (for accessibility)
+        item.addEventListener('keydown', handleKeyboardReorder);
+      });
+    }
+
+    /**
+     * Adds click listeners to remove buttons.
+     */
+    function addRemoveListeners() {
+      const removeButtons = fileList.querySelectorAll('.remove-file-button');
+      removeButtons.forEach(button => {
+        button.addEventListener('click', (event) => {
+          const listItem = event.target.closest('.file-item');
+          if (listItem) {
+            removeFile(listItem.id);
+          }
+        });
+      });
+    }
+
+    /**
+     * Removes a file from the filesData array and re-renders the list.
+     * @param {string} fileId - The ID of the file to remove.
+     */
+    function removeFile(fileId) {
+      const originalLength = filesData.length;
+      filesData = filesData.filter(file => file.id !== fileId);
+      if (filesData.length < originalLength) {
+        showStatusMessage('File removed.', 'info');
+        renderFileList();
+      }
+    }
+
+    /**
+     * Handles the start of a drag operation.
+     * @param {DragEvent} e - The dragstart event.
+     */
+    function handleDragStart(e) {
+      draggedItem = e.target;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedItem.id); // Set data for transfer
+      setTimeout(() => {
+        draggedItem.classList.add('dragging');
+      }, 0); // Add class after a brief delay to avoid flicker
+      showStatusMessage(`Dragging file: ${draggedItem.textContent.trim()}`, 'info');
+    }
+
+    /**
+     * Handles an element being dragged over another element.
+     * @param {DragEvent} e - The dragover event.
+     */
+    function handleDragOver(e) {
+      e.preventDefault(); // Necessary to allow dropping
+      if (e.target.closest('.file-item') && e.target.closest('.file-item') !== draggedItem) {
+        e.target.closest('.file-item').classList.add('drag-over');
+        e.dataTransfer.dropEffect = 'move';
+      }
+    }
+
+    /**
+     * Handles an element leaving a valid drop target.
+     * @param {DragEvent} e - The dragleave event.
+     */
+    function handleDragLeave(e) {
+      if (e.target.closest('.file-item')) {
+        e.target.closest('.file-item').classList.remove('drag-over');
+      }
+    }
+
+    /**
+     * Handles the drop of a dragged element.
+     * @param {DragEvent} e - The drop event.
+     */
+    function handleDrop(e) {
+      e.preventDefault();
+      const targetItem = e.target.closest('.file-item');
+
+      if (draggedItem && targetItem && draggedItem !== targetItem) {
+        const draggedId = draggedItem.id;
+        const targetId = targetItem.id;
+
+        const draggedIndex = filesData.findIndex(f => f.id === draggedId);
+        const targetIndex = filesData.findIndex(f => f.id === targetId);
+
+        if (draggedIndex !== -1 && targetIndex !== -1) {
+          const [removed] = filesData.splice(draggedIndex, 1);
+          filesData.splice(targetIndex, 0, removed);
+          renderFileList(); // Re-render to reflect new order
+          showStatusMessage(`Reordered files. ${removed.name} moved to position ${targetIndex + 1}.`, 'success');
+        }
+      }
+      if (targetItem) {
+        targetItem.classList.remove('drag-over');
+      }
+    }
+
+    /**
+     * Handles the end of a drag operation.
+     * @param {DragEvent} e - The dragend event.
+     */
+    function handleDragEnd(e) {
+      draggedItem.classList.remove('dragging');
+      draggedItem = null;
+      // Remove drag-over class from all items in case it was left on one
+      document.querySelectorAll('.file-item').forEach(item => {
+        item.classList.remove('drag-over');
+      });
+    }
+
+    /**
+     * Handles keyboard reordering for accessibility.
+     * @param {KeyboardEvent} e - The keydown event.
+     */
+    function handleKeyboardReorder(e) {
+      const currentItem = e.target.closest('.file-item');
+      if (!currentItem) return;
+
+      const currentIndex = filesData.findIndex(f => f.id === currentItem.id);
+      let newIndex = currentIndex;
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault(); // Prevent page scroll
+        newIndex = Math.max(0, currentIndex - 1);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault(); // Prevent page scroll
+        newIndex = Math.min(filesData.length - 1, currentIndex + 1);
+      } else {
+        return; // Not an arrow key
+      }
+
+      if (newIndex !== currentIndex) {
+        const [movedItem] = filesData.splice(currentIndex, 1);
+        filesData.splice(newIndex, 0, movedItem);
+        renderFileList();
+        // Re-focus the moved item to maintain keyboard accessibility
+        const newItemElement = document.getElementById(movedItem.id);
+        if (newItemElement) {
+          newItemElement.focus();
+        }
+        showStatusMessage(`File ${movedItem.name} moved from position ${currentIndex + 1} to ${newIndex + 1}.`, 'info');
+      }
+    }
+
+    /**
+     * Handles the stitching of files.
+     * Combines file contents with filenames as headers.
+     */
+    stitchButton.addEventListener('click', () => {
+      if (filesData.length === 0) {
+        showStatusMessage('Please upload files first to stitch them.', 'error');
+        return;
+      }
+
+      showStatusMessage('Stitching files...', 'info');
+      let stitchedContent = '';
+
+      try {
+        filesData.forEach((file, index) => {
+          // Add filename as a level 2 Markdown header
+          stitchedContent += `## ${file.name}\n\n`;
+          // Add file content
+          stitchedContent += file.content;
+          // Add two newlines between files for separation, unless it's the last file
+          if (index < filesData.length - 1) {
+            stitchedContent += '\n\n';
+          }
+        });
+
+        // Make the stitched content available for download
+        const blob = new Blob([stitchedContent], { type: 'text/markdown;charset=utf-8' });
+
+        if (!blob) {
+          throw new Error('Failed to create Blob for stitched content.');
+        }
+
+        const url = URL.createObjectURL(blob);
+
+        if (!url) {
+          throw new Error('Failed to create object URL for download.');
+        }
+
+        const now = new Date();
+        const datetime = now.toISOString().replace(/[:.-]/g, '').slice(0, 15); // YYYYMMDDTHHMMSS
+        const filename = `output-markdown-${datetime}.md`;
+
+        downloadButton.href = url;
+        downloadButton.download = filename;
+        downloadButton.classList.remove('hidden'); // Show download button
+        downloadButton.classList.remove('disabled'); // Enable download link
+        downloadButton.setAttribute('tabindex', '0'); // Make it focusable
+        showStatusMessage('Files stitched successfully! You can now download the output.', 'success');
+
+      } catch (error) {
+        console.error('Error during file stitching or URL creation:', error);
+        showStatusMessage(`Error stitching files: ${error.message}. Please try again.`, 'error');
+        downloadButton.classList.add('hidden'); // Hide download button on error
+        downloadButton.classList.add('disabled'); // Keep disabled
+        downloadButton.removeAttribute('download');
+        downloadButton.href = '#';
+        downloadButton.setAttribute('tabindex', '-1');
+      }
+    });
+
+    /**
+     * Handles the download button click.
+     * For <a> tags with the 'download' attribute, the browser handles the download.
+     * We no longer manually revoke the URL here, as the browser typically cleans it up
+     * when the page unloads or the download is complete.
+     */
+    downloadButton.addEventListener('click', () => {
+      // Only show message if the link is active (not disabled)
+      if (!downloadButton.classList.contains('disabled')) {
+        showStatusMessage('Initiating download...', 'info');
+      }
+    });
+
+
+    // Initial state setup
+    updateButtonStates();
+    renderFileList(); // Render initial empty state or existing files (if any, though none on first load)
+
+    // Drag and drop for the upload area
+    const uploadArea = document.querySelector('section[aria-labelledby="upload-heading"]');
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault(); // Prevent default to allow drop
+      uploadArea.classList.add('border-indigo-500', 'bg-indigo-50');
+      showStatusMessage('Drop files to upload.', 'info');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('border-indigo-500', 'bg-indigo-50');
+      showStatusMessage('', 'info'); // Clear message
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('border-indigo-500', 'bg-indigo-50');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        // Simulate file input change event
+        const dataTransfer = new DataTransfer();
+        for (let i = 0; i < files.length; i++) {
+          dataTransfer.items.add(files[i]);
+        }
+        fileInput.files = dataTransfer.files;
+        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+
+  </script>
+</body>
+</html>
